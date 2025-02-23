@@ -25,7 +25,7 @@ module Control_Unit(
 	always_comb
 	begin
 		
-		case(op_code)
+		casex(op_code)
 			5'b0x101: //LUI and AUIPC
 			begin
 					imm_en				= 	1'b1;
@@ -47,7 +47,7 @@ module Control_Unit(
 					sign_extender_type	= 	(sub_op_code == 3'b011)	? 1'b1 : 1'b0;
 					pc_control			= 	2'b01;
 					
-					case(sub_op_code)
+					casex(sub_op_code)
 						4'bx000://addi
 						begin	alu_op = 4'b0000; end
 							
@@ -88,7 +88,7 @@ module Control_Unit(
 					sign_extender_type	=	1'b0;
 					pc_control			= 	2'b01;
 					
-					case(sub_op_code)
+					casex(sub_op_code)
 						4'b0000://add
 						begin	alu_op = 4'b0000; end
 							
@@ -133,7 +133,7 @@ module Control_Unit(
 					pc_control			= 	2'b01;
 				//	sign_extender_type	=	1'b0;
 					
-					case(sub_op_code)
+					casex(sub_op_code)
 						4'bx0xx://lb
 						begin	sign_extender_type	=	1'b0; end
 						
@@ -191,7 +191,7 @@ module Control_Unit(
 					sign_extender_en	=	1'b1;
 					pc_control			= 	2'b11;
 					
-					case(sub_op_code)
+					casex(sub_op_code)
 						4'bx000:// beq
 						begin
 							sign_extender_type	=	1'b0;

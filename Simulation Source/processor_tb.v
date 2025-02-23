@@ -16,36 +16,18 @@ module processor_top_tb;
   end
 
   // Reset signal
-  initial begin
-    rst = 0;
-    #2;  
-    
+  initial 
+  begin
     rst = 1;
-    #10;   
+    #1;  
     
-    $finish;
+    rst = 0;
+    #1;
+
+    rst = 1;
+    #1000;   
+    
+    $finish();
   end
-
-  // Dump PC, Instruction, and Register File
-  initial begin
-    forever @(posedge clk) begin
-      $display("=== Processor State at time %0t ===", $time);
-      
-      // Program Counter
-      $display("PC = %h", tb.PC_out);
-      $display("RD = %d", tb.rd);
-      $display("Instruciton = %h", tb.instructionMemory_out);
-
-      // Instruction
-      $display("Immediate value = %h", tb.imm);
-
-      // Register File Contents
-      for (int i = 0; i < 32; i++) begin
-        $display("R[%0d] = %h", i, tb.RF_.reg_data[i]);
-      end
-
-      $display("==============================");
-    end
-  end
-
+  
 endmodule
