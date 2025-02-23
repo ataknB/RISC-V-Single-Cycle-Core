@@ -7,7 +7,7 @@ module Control_Unit(
 	output logic rf_write_en, //register file write enable
 	output logic mem_read_en, //memory read enable
 	output logic mem_write_en, //memory write enable
-	output logic [1:0]pc_control, //program counter control
+	output logic [1:0]branch_mode, //program counter control
 	/*
 	01 == normal
 	10 == jump
@@ -15,18 +15,35 @@ module Control_Unit(
 	00 == NA
 	
 	*/
-	
+	output logic JALR_en,
+	output logic JAL_en,
 	output logic sign_extender_en,
 	output logic sign_extender_type,// 1 = unsigned , 0 = signed 
 
+	output logic [2:0]load_type,
+	/*
+		000 = NA
+		001 = lb
+		010 = lbu
+		011 = lh
+		100 = lhu
+		101 = lw
+	*/
+	output logic [1:0]store_type,
+	/*
+		00 = NA
+		01 = sb
+		10 = sh
+		11 = sw
+	*/
+
 	output logic [3:0]alu_op //alu operation controller
 	);
-	
 	always_comb
 	begin
 		
 		casex(op_code)
-			5'b0x101: //LUI and AUIPC
+			5'b01101: //LUI
 			begin
 					imm_en				= 	1'b1;
 					rf_write_en 		= 	1'b1;
@@ -34,10 +51,29 @@ module Control_Unit(
 					mem_write_en		=	1'b0;
 					sign_extender_en	=	1'b1;
 					sign_extender_type	=	1'b0;
-					pc_control			= 	2'b01;
+					branch_mode			= 	2'b01;
+					JAL_en				=	1'b0;
+					JALR_en				=	1'b0;
+					load_type = 3'b000;
+					store_type = 2'b00;
+			end
+			
+			5'b00101: //LUI
+			begin
+					imm_en				= 	1'b1;
+					rf_write_en 		= 	1'b1;
+					mem_read_en			=	1'b0;
+					mem_write_en		=	1'b0;
+					sign_extender_en	=	1'b1;
+					sign_extender_type	=	1'b0;
+					branch_mode			= 	2'b01;
+					JAL_en				=	1'b0;
+					JALR_en				=	1'b0;
+					load_type = 3'b000;
+					store_type = 2'b00;
 			end
 
-			5'b00100:// I Type
+			5'b00100: // I Type
 			begin
 					imm_en				= 	1'b1;
 					rf_write_en 		= 	1'b1;
@@ -45,40 +81,65 @@ module Control_Unit(
 					mem_write_en		=	1'b0;
 					sign_extender_en	=	1'b1;
 					sign_extender_type	= 	(sub_op_code == 3'b011)	? 1'b1 : 1'b0;
-					pc_control			= 	2'b01;
+					branch_mode			= 	2'b01;
+					JAL_en				=	1'b0;
+					JALR_en				=	1'b0;
+					load_type = 3'b000;
+					store_type = 2'b00;
 					
-					casex(sub_op_code)
-						4'bx000://addi
+					case(sub_op_code)
+						4'b0000: //addi
+						begin	alu_op = 4'b0000; end
+						
+						4'b1000: //addi
 						begin	alu_op = 4'b0000; end
 							
-						4'bx01x://slti and sltiu
+						4'b0010: //slti and sltiu
 						begin	alu_op = 4'b1101; end
 						
-						4'bx100://xor
+						4'b0011: //slti and sltiu
+						begin	alu_op = 4'b1101; end
+						
+						4'b1010: //slti and sltiu
+						begin	alu_op = 4'b1101; end
+						
+						4'b1011: //slti and sltiu
+						begin	alu_op = 4'b1101; end
+						
+						4'b0100: //xor
+						begin	alu_op = 4'b0110; end
+						
+						4'b1100: //xor
 						begin	alu_op = 4'b0110; end
 
-						4'bx01x://or
+						4'b0110: //or
 						begin	alu_op = 4'b0111; end
 						
-						4'bx01x://and
+						4'b1110: //or
+						begin	alu_op = 4'b0111; end
+						
+						4'b0011: //and
+						begin	alu_op = 4'b1000; end
+						
+						4'b1011: //and
 						begin	alu_op = 4'b1000; end
 
-						4'b0001://sll
+						4'b0001: //sll
 						begin	alu_op = 4'b0010; end
 
-						4'b0101://srl
+						4'b0101: //srl
 						begin	alu_op = 4'b0100; end	
 
-						4'b1101://sra
+						4'b1101: //sra
 						begin	alu_op = 4'b0101; end	
 
-						default://default
+						default: //default
 						begin	alu_op = 4'd0; end							
 						
 					endcase
 			end
 			
-			5'b01100:// R Type
+			5'b01100: // R Type
 			begin
 					imm_en				= 	1'b0;
 					rf_write_en 		= 	1'b1;
@@ -86,43 +147,65 @@ module Control_Unit(
 					mem_write_en		=	1'b0;
 					sign_extender_en	=	1'b0;
 					sign_extender_type	=	1'b0;
-					pc_control			= 	2'b01;
+					branch_mode			= 	2'b01;
+					JAL_en				=	1'b0;
+					JALR_en				=	1'b0;
+					load_type = 3'b000;
+					store_type = 2'b00;
 					
-					casex(sub_op_code)
-						4'b0000://add
+					case(sub_op_code)
+						4'b0000: //add
 						begin	alu_op = 4'b0000; end
 							
-						4'b1000://sub
+						4'b1000: //sub
 						begin	alu_op = 4'b0001; end
 
-						4'bx001://sll
+						4'b0001: //sll
 						begin	alu_op = 4'b0010; end
 						
-						4'bx01x://slt-sltu
+						4'b1001: //sll
+						begin	alu_op = 4'b0010; end
+						
+						4'b0011: //sltu
 						begin	alu_op = 4'b1101; end
-
-						4'bx100://xor
+						
+						4'b1011: //sltu
+						begin	alu_op = 4'b1101; end
+						
+						4'b0010: //slt
+						begin	alu_op = 4'b1101; end
+						
+						4'b1010: //slt
+						begin	alu_op = 4'b1101; end
+						
+						4'b1100: //xor
+						begin	alu_op = 4'b0110; end
+						
+						4'b0100: //xor
 						begin	alu_op = 4'b0110; end
 
-						4'b0101://srl
+						4'b0101: //srl
 						begin	alu_op = 4'b0100; end						
 
-						4'b1101://sra
+						4'b1101: //sra
 						begin	alu_op = 4'b0101; end
 
-						4'bx110://or
+						4'b0110: //or
+						begin	alu_op = 4'b0111; end
+						
+						4'b1110: //or
 						begin	alu_op = 4'b0111; end
 
-						4'bx111://and
-						begin	alu_op = 4'b1000; end						
+						4'b0111: //and
+						begin	alu_op = 4'b1000; end	
 						
-						default://default
+						default: //default
 						begin	alu_op = 4'd0; end							
 						
 					endcase					
 			end
 			
-			5'b00000:// Load Type
+			5'b00000: // Load Type
 			begin
 					imm_en				= 	1'b1;
 					rf_write_en 		= 	1'b1;
@@ -130,22 +213,34 @@ module Control_Unit(
 					mem_write_en		=	1'b0;
 					sign_extender_en	=	1'b1;
 					alu_op 				= 	4'd0;
-					pc_control			= 	2'b01;
-				//	sign_extender_type	=	1'b0;
+					branch_mode			= 	2'b01;
+					sign_extender_type	=	1'b0;
+					JAL_en				=	1'b0;
+					JALR_en				=	1'b0;
+					store_type = 2'b00;
 					
-					casex(sub_op_code)
-						4'bx0xx://lb
-						begin	sign_extender_type	=	1'b0; end
+					case(sub_op_code)
+						4'b0000: //lb
+						begin	load_type = 3'b001; end
 						
-						4'bx1xx://lbu
-						begin	sign_extender_type	=	1'b1; end
+						4'b0100: //lbu
+						begin	load_type = 3'b010; end
+						
+						4'b0001: //lh
+						begin	load_type = 3'b011; end
+						
+						4'b0101: //lhu
+						begin	load_type = 3'b100; end
+						
+						4'b0010: //lw
+						begin	load_type = 3'b101; end
 						
 						default://default
-						begin	sign_extender_type	=	1'b0; end	
+						begin	load_type = 3'b000; end	
 					endcase	
 			end			
 			
-			5'b01000:// Store Type
+			5'b01000: // Store Type
 			begin
 					imm_en				= 	1'b1;
 					rf_write_en 		= 	1'b0;
@@ -154,11 +249,34 @@ module Control_Unit(
 					sign_extender_en	=	1'b1;
 					sign_extender_type	=	1'b0;
 					alu_op 				= 	4'd0;
-					pc_control			= 	2'b01;
+					branch_mode			= 	2'b01;
+					JAL_en				=	1'b0;
+					JALR_en				=	1'b0;
+					load_type = 3'b000;
+					case(sub_op_code)
+						4'b0_000:
+						begin
+							store_type = 2'b01;
+						end
+					
+						4'b0_001:
+						begin
+							store_type = 2'b10;
+						end
+						
+						4'b0_010:
+						begin
+							store_type = 2'b11;
+						end
+						default:
+						begin
+							store_type = 2'b00;
+						end
+					endcase
 	
 			end
 			
-			5'b11011://JAL command
+			5'b11011: //JAL command
 			begin
 					imm_en				= 	1'b1;
 					rf_write_en 		= 	1'b1;
@@ -166,11 +284,15 @@ module Control_Unit(
 					mem_write_en		=	1'b0;
 					sign_extender_en	=	1'b1;
 					sign_extender_type	=	1'b0;
-					pc_control			= 	2'b10;
+					branch_mode			= 	2'b10;
+					JAL_en				=	1'b1;
+					JALR_en				=	1'b0;
+					load_type = 3'b000;
+					store_type = 2'b00;
 					
 			end
 			
-			5'b11001://JALR command
+			5'b11001: //JALR command
 			begin
 					imm_en				= 	1'b1;
 					rf_write_en 		= 	1'b1;
@@ -178,51 +300,83 @@ module Control_Unit(
 					mem_write_en		=	1'b0;
 					sign_extender_en	=	1'b1;
 					sign_extender_type	=	1'b0;
-					pc_control			= 	2'b10;
+					branch_mode			= 	2'b10;
+					JAL_en				=	1'b0;
+					JALR_en				=	1'b1;
+					load_type = 3'b000;
+					store_type = 2'b00;
 					
 			end
 			
-			5'b11000:// BRANCH Type
+			5'b11000: // BRANCH Type
 			begin
 					imm_en				= 	1'b1;
 					rf_write_en 		= 	1'b1;
 					mem_read_en			=	1'b0;
 					mem_write_en		=	1'b0;
 					sign_extender_en	=	1'b1;
-					pc_control			= 	2'b11;
+					branch_mode			= 	2'b11;
+					JAL_en				=	1'b0;
+					JALR_en				=	1'b0;
+					load_type 			= 	3'b000;
+					store_type 			= 	2'b00;
 					
-					casex(sub_op_code)
-						4'bx000:// beq
+					case(sub_op_code)
+						4'b0000: // beq
 						begin
 							sign_extender_type	=	1'b0;
 							alu_op				= 	4'b1001;
 						end	
 						
-						4'bx001:// bne
+						4'b1000: // beq
+						begin
+							sign_extender_type	=	1'b0;
+							alu_op				= 	4'b1001;
+						end	
+						
+						4'b0001: // bne
 						begin
 							sign_extender_type	=	1'b0;
 							alu_op				= 	4'b1010;
 						end	
 						
-						4'bx100:// blt
+						4'b1001: // bne
+						begin
+							sign_extender_type	=	1'b0;
+							alu_op				= 	4'b1010;
+						end	
+						
+						4'b0100: // blt
 						begin
 							sign_extender_type	=	1'b0;
 							alu_op				= 	4'b1011;
 						end	
 						
-						4'bx101:// bge
+						4'b1100: // blt
+						begin
+							sign_extender_type	=	1'b0;
+							alu_op				= 	4'b1011;
+						end	
+						
+						4'b0101: // bge
 						begin
 							sign_extender_type	=	1'b1;
 							alu_op				= 	4'b1100;
 						end	
+						
+						4'b1101: // bge
+						begin
+							sign_extender_type	=	1'b1;
+							alu_op				= 	4'b1100;
+						end
 					
-						4'bx110:// bltu
+						4'bx110: // bltu
 						begin
 							sign_extender_type	=	1'b1;
 							alu_op				= 	4'b1011;
 						end	
 						
-						4'bx111:// bgeu
+						4'bx111: // bgeu
 						begin
 							sign_extender_type	=	1'b1;
 							alu_op				= 	4'b1100;
@@ -243,8 +397,10 @@ module Control_Unit(
 					mem_write_en		=	1'b0;
 					sign_extender_en	=	1'b0;
 					sign_extender_type	=	1'b0;
-					pc_control			= 	2'd0;
+					branch_mode			= 	2'd0;
 					alu_op				=	4'd0;
+					load_type = 3'b000;
+					store_type = 2'b00;
 			end
 		endcase
 	end
